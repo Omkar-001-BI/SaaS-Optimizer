@@ -29,14 +29,15 @@ function App() {
   }, []);
 
   const fetchAnalytics = async () => {
+    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3000";
     try {
-      const summaryRes = await axios.get("http://localhost:3000/analytics/summary");
-      const categoryRes = await axios.get("http://localhost:3000/analytics/categories");
-      const recommendationRes = await axios.get("http://localhost:3000/analytics/recommendations");
-      const recentRes = await axios.get("http://localhost:3000/analytics/recent");
-      const topWasteRes = await axios.get("http://localhost:3000/analytics/top-waste");
-      const toolRes = await axios.get("http://localhost:3000/analytics/tool-wise");
-      const alertRes = await axios.get("http://localhost:3000/analytics/alerts");
+      const summaryRes = await axios.get(`${apiUrl}/analytics/summary`);
+      const categoryRes = await axios.get(`${apiUrl}/analytics/categories`);
+      const recommendationRes = await axios.get(`${apiUrl}/analytics/recommendations`);
+      const recentRes = await axios.get(`${apiUrl}/analytics/recent`);
+      const topWasteRes = await axios.get(`${apiUrl}/analytics/top-waste`);
+      const toolRes = await axios.get(`${apiUrl}/analytics/tool-wise`);
+      const alertRes = await axios.get(`${apiUrl}/analytics/alerts`);
       
       setAlerts(alertRes.data);
       setToolData(toolRes.data.data || []);

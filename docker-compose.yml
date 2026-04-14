@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ml-service
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - ./saas_model.pkl:/app/saas_model.pkl
+      - ./label_encoder.pkl:/app/label_encoder.pkl
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - ML_SERVICE_URL=http://ml-service:5000
+      - MONGODB_URI=${MONGODB_URI}
+    depends_on:
+      - ml-service
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:3000
+    depends_on:
+      - backend

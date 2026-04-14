@@ -9,7 +9,8 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect("mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0")
+const mongoUri = process.env.MONGODB_URI || "mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0";
+mongoose.connect(mongoUri)
   .then(() => console.log("MongoDB Atlas Connected"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
 
@@ -47,8 +48,9 @@ app.get("/", (req, res) => {
 app.post("/analyze", async (req, res) => {
   try {
     const userData = req.body;
+    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
 
-    const response = await axios.post("http://127.0.0.1:5000/predict", userData);
+    const response = await axios.post(`${mlServiceUrl}/predict`, userData);
 
     const result = {
       input: userData,
@@ -75,6 +77,7 @@ app.post("/analyze", async (req, res) => {
 app.post("/analyze-batch", async (req, res) => {
   try {
     const users = req.body.users;
+    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
 
     if (!Array.isArray(users)) {
       return res.status(400).json({
@@ -86,7 +89,7 @@ app.post("/analyze-batch", async (req, res) => {
     const results = [];
 
     for (const user of users) {
-      const response = await axios.post("http://127.0.0.1:5000/predict", user);
+      const response = await axios.post(`${mlServiceUrl}/predict`, user);
 
       const result = {
         input: user,

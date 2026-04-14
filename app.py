@@ -1,12 +1,16 @@
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
+import os
 
 app = Flask(__name__)
 
 # Load model
-model = joblib.load("saas_model.pkl")
-le = joblib.load("label_encoder.pkl")
+model_path = os.path.join(os.path.dirname(__file__), "saas_model.pkl")
+encoder_path = os.path.join(os.path.dirname(__file__), "label_encoder.pkl")
+
+model = joblib.load(model_path)
+le = joblib.load(encoder_path)
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -44,5 +48,10 @@ def predict():
         "estimated_savings": savings
     })
 
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "healthy", "service": "ml-service"})
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
