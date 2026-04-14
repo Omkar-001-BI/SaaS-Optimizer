@@ -1,15 +1,21 @@
+require("dotenv").config();
+
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const mongoose = require("mongoose");
+
+// ✅ ENV VARIABLES
+const ML_API_URL = process.env.ML_API_URL || "http://127.0.0.1:5000";
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-const mongoUri = process.env.MONGODB_URI || "mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0";
+// ✅ MongoDB connection (no hardcoded secrets)
+const mongoUri = process.env.MONGODB_URI;
 mongoose.connect(mongoUri)
   .then(() => console.log("MongoDB Atlas Connected"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
@@ -48,9 +54,8 @@ app.get("/", (req, res) => {
 app.post("/analyze", async (req, res) => {
   try {
     const userData = req.body;
-    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
 
-    const response = await axios.post(`${mlServiceUrl}/predict`, userData);
+    const response = await axios.post(`${ML_API_URL}/predict`, userData);
 
     const result = {
       input: userData,
@@ -77,7 +82,6 @@ app.post("/analyze", async (req, res) => {
 app.post("/analyze-batch", async (req, res) => {
   try {
     const users = req.body.users;
-    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
 
     if (!Array.isArray(users)) {
       return res.status(400).json({
@@ -89,7 +93,7 @@ app.post("/analyze-batch", async (req, res) => {
     const results = [];
 
     for (const user of users) {
-      const response = await axios.post(`${mlServiceUrl}/predict`, user);
+      const response = await axios.post(`${ML_API_URL}/predict`, user);
 
       const result = {
         input: user,
@@ -115,6 +119,7 @@ app.post("/analyze-batch", async (req, res) => {
   }
 });
 
+// Analytics APIs
 app.get("/analytics/summary", async (req, res) => {
   try {
     const totalAnalyses = await UserAnalysis.countDocuments();
@@ -267,9 +272,7 @@ app.get("/analytics/alerts", async (req, res) => {
     });
 
     const savingsResult = await UserAnalysis.aggregate([
-      {
-        $match: { "output.usage_category": "Inactive" }
-      },
+      { $match: { "output.usage_category": "Inactive" } },
       {
         $group: {
           _id: null,
@@ -294,6 +297,7 @@ app.get("/analytics/alerts", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+// ✅ FIXED PORT
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
