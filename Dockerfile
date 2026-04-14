@@ -27,7 +27,7 @@ FROM node:18-alpine as frontend
 
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 COPY frontend/ ./
 RUN npm run build
 
