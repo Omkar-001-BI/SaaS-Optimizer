@@ -3,61 +3,13 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python app.py"
+    "startCommand": "npm start",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 300
   },
-  "services": [
-    {
-      "name": "ml-service",
-      "source": {
-        "root": "."
-      },
-      "build": {
-        "builder": "NIXPACKS"
-      },
-      "deploy": {
-        "startCommand": "python app.py",
-        "healthcheckPath": "/",
-        "healthcheckTimeout": 300
-      },
-      "env": {
-        "PYTHON_VERSION": "3.11"
-      }
-    },
-    {
-      "name": "backend",
-      "source": {
-        "root": "backend"
-      },
-      "build": {
-        "builder": "NIXPACKS"
-      },
-      "deploy": {
-        "startCommand": "npm start",
-        "healthcheckPath": "/",
-        "healthcheckTimeout": 300
-      },
-      "env": {
-        "NODE_ENV": "production",
-        "ML_SERVICE_URL": "${ml-service.RAILWAY_STATIC_URL}"
-      }
-    },
-    {
-      "name": "frontend",
-      "source": {
-        "root": "frontend"
-      },
-      "build": {
-        "builder": "NIXPACKS"
-      },
-      "deploy": {
-        "startCommand": "npm start",
-        "healthcheckPath": "/",
-        "healthcheckTimeout": 300
-      },
-      "env": {
-        "NODE_ENV": "production",
-        "REACT_APP_API_URL": "${backend.RAILWAY_STATIC_URL}"
-      }
-    }
-  ]
+  "env": {
+    "NODE_ENV": "production",
+    "ML_SERVICE_URL": "${ML_SERVICE_URL}",
+    "MONGODB_URI": "${MONGODB_URI}"
+  }
 }
