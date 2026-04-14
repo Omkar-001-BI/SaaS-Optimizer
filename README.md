@@ -28,8 +28,8 @@ A full-stack machine learning application for optimizing SaaS subscription costs
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/saas-cost-optimization.git
-cd saas-cost-optimization
+git clone https://github.com/Omkar-001-BI/SaaS-Optimizer.git
+cd SaaS-Optimizer
 ```
 
 ### 2. Backend Setup
@@ -143,4 +143,38 @@ MIT License - feel free to use this project for learning and development.
 
 ## 📞 Support
 
-For questions or issues, please open a GitHub issue.
+For questions or issues, please open a GitHub issue.  
+
+### Analytics APIs
+- `GET /analytics/summary`
+- `GET /analytics/categories`
+- `GET /analytics/recommendations`
+- `GET /analytics/recent`
+- `GET /analytics/top-waste`
+- `GET /analytics/tool-wise`
+- `GET /analytics/alerts`
+
+---
+
+## 📸 Screenshots
+
+> Add your screenshots here after uploading images to a `screenshots/` folder
+
+### Dashboard
+![Dashboard](./screenshots/dashboard.png)
+
+### Charts
+![Charts](./screenshots/charts.png)
+
+### Top Wasteful Users
+![Top Users](./screenshots/top-users.png)
+
+---
+
+## 🚀 How to Run Locally
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/your-username/saas-cost-optimizer.git
+cd saas-cost-optimizer
+>>>>>>> 2604056283f93e43073c97161128b4dbfbe37ae3
