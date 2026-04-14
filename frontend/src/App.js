@@ -15,6 +15,8 @@ import {
 } from "recharts";
 import "./App.css";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
 function App() {
   const [summary, setSummary] = useState({});
   const [categories, setCategories] = useState([]);
@@ -29,19 +31,18 @@ function App() {
   }, []);
 
   const fetchAnalytics = async () => {
-    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3000";
     try {
-      const summaryRes = await axios.get(`${apiUrl}/analytics/summary`);
-      const categoryRes = await axios.get(`${apiUrl}/analytics/categories`);
-      const recommendationRes = await axios.get(`${apiUrl}/analytics/recommendations`);
-      const recentRes = await axios.get(`${apiUrl}/analytics/recent`);
-      const topWasteRes = await axios.get(`${apiUrl}/analytics/top-waste`);
-      const toolRes = await axios.get(`${apiUrl}/analytics/tool-wise`);
-      const alertRes = await axios.get(`${apiUrl}/analytics/alerts`);
-      
-      setAlerts(alertRes.data);
+      const summaryRes = await axios.get(`${API_URL}/analytics/summary`);
+      const categoryRes = await axios.get(`${API_URL}/analytics/categories`);
+      const recommendationRes = await axios.get(`${API_URL}/analytics/recommendations`);
+      const recentRes = await axios.get(`${API_URL}/analytics/recent`);
+      const topWasteRes = await axios.get(`${API_URL}/analytics/top-waste`);
+      const toolRes = await axios.get(`${API_URL}/analytics/tool-wise`);
+      const alertRes = await axios.get(`${API_URL}/analytics/alerts`);
+
+      setAlerts(alertRes.data || {});
       setToolData(toolRes.data.data || []);
-      setSummary(summaryRes.data);
+      setSummary(summaryRes.data || {});
       setCategories(categoryRes.data.data || []);
       setRecommendations(recommendationRes.data.data || []);
       setRecent(recentRes.data.data || []);
@@ -58,18 +59,20 @@ function App() {
       <h1>SaaS Cost Optimization Dashboard</h1>
 
       {alerts.inactiveUsers > 0 && (
-  <div style={{
-    backgroundColor: "#ffe6e6",
-    padding: "15px",
-    borderRadius: "8px",
-    marginBottom: "20px",
-    border: "1px solid red"
-  }}>
-    <h3>⚠️ Alert</h3>
-    <p>{alerts.inactiveUsers} inactive users detected</p>
-    <p>Potential monthly loss: ₹ {alerts.totalLoss}</p>
-  </div>
-)}
+        <div
+          style={{
+            backgroundColor: "#ffe6e6",
+            padding: "15px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            border: "1px solid red"
+          }}
+        >
+          <h3>⚠️ Alert</h3>
+          <p>{alerts.inactiveUsers} inactive users detected</p>
+          <p>Potential monthly loss: ₹ {alerts.totalLoss || 0}</p>
+        </div>
+      )}
 
       <div className="cards">
         <div className="card">
@@ -97,7 +100,10 @@ function App() {
                 label
               >
                 {categories.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={pieColors[index % pieColors.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip />
@@ -168,8 +174,28 @@ function App() {
             ))}
           </tbody>
         </table>
-            
+      </div>
 
+      <div className="table-section">
+        <h2>Tool-wise Waste Analysis</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Total Savings</th>
+              <th>Users</th>
+            </tr>
+          </thead>
+          <tbody>
+            {toolData.map((item, index) => (
+              <tr key={index}>
+                <td>{item._id}</td>
+                <td>₹ {item.totalSavings}</td>
+                <td>{item.users}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
