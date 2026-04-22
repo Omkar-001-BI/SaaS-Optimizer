@@ -1,89 +1,129 @@
-# SaaS Cost Optimization - Vercel + Render Deployment
+# SaaS Cost Optimization - Railway Deployment
 
-## 🚀 Deployment Strategy: Vercel + Render
+## 🚀 Deployment Strategy: Railway (All-in-One)
 
-### **Step 1: Deploy Frontend on Vercel** (React App)
-1. Go to https://vercel.com
-2. Connect your GitHub account
-3. Click "Import Project" → Select `Omkar-001-BI/SaaS-Optimizer`
-4. Configure:
-   - **Root Directory**: `frontend`
-   - **Framework Preset**: Create React App (auto-detected)
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `build`
-5. Add environment variable:
+Railway is a modern cloud platform that handles multiple services (frontend, backend, ML service) in a single unified project with built-in CI/CD, environment management, and monitoring.
+
+### **Prerequisites**
+1. Railway account: https://railway.app
+2. GitHub repository connected
+3. Dockerfile and docker-compose.yml configured
+4. MongoDB Atlas cluster created with connection string
+
+### **Step 1: Create Railway Project**
+1. Go to https://railway.app/dashboard
+2. Click "Create" → "New Project"
+3. Select "Deploy from GitHub repo"
+4. Connect and select your repository
+5. Railway auto-detects the Dockerfile
+
+### **Step 2: Deploy ML Service** (Python/Flask)
+1. In Railway dashboard, click "Add Service"
+2. Select "GitHub Repo" and choose this repository
+3. Railway Plugin Settings:
+   - **Root Directory**: `/`
+   - **Dockerfile Path**: `Dockerfile`
+   - **Target**: `ml-service`
+   - **Service Name**: `ml-service`
+4. Environment Variables (set via Railway dashboard):
    ```
-   REACT_APP_API_URL=https://your-backend.onrender.com
+   FLASK_ENV=production
+   PORT=5000
    ```
-6. Click "Deploy" → Get your frontend URL
+5. Deploy
 
-### **Step 2: Deploy ML Service on Render** (Python/Flask)
-1. Go to https://render.com
-2. Connect GitHub → Select `Omkar-001-BI/SaaS-Optimizer`
-3. Click "New +" → "Web Service"
-4. Configure:
-   - **Name**: `saas-ml-service`
-   - **Runtime**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python app.py`
-   - **Environment**: `FLASK_ENV=production`
-5. Deploy → Get ML service URL (e.g., `https://saas-ml-service.onrender.com`)
-
-### **Step 3: Deploy Backend on Render** (Node.js/Express)
-1. In Render dashboard, click "New +" → "Web Service"
-2. Select the same repository
-3. Configure:
-   - **Name**: `saas-backend`
-   - **Runtime**: Node.js
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-4. Set environment variables:
+### **Step 3: Deploy Backend** (Node.js/Express)
+1. Click "Add Service" → "GitHub Repo"
+2. Configuration:
+   - **Root Directory**: `/`
+   - **Dockerfile Target**: `backend`
+   - **Service Name**: `backend`
+3. Environment Variables (set via Railway dashboard - DO NOT hardcode):
    ```
    NODE_ENV=production
-   ML_SERVICE_URL=https://saas-ml-service.onrender.com
-   MONGODB_URI=mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0
+   ML_SERVICE_URL=http://ml-service:5000
+   MONGODB_URI=<Your MongoDB connection string>
+   PORT=3000
    ```
-5. Deploy → Get backend URL
+   ⚠️ **IMPORTANT**: Never commit MONGODB_URI to code. Use Railway environment variables only.
+4. Deploy
 
-### **Step 4: Update Frontend Environment**
-1. Go back to Vercel dashboard
-2. Update the `REACT_APP_API_URL` environment variable with your Render backend URL
-3. Redeploy the frontend
+### **Step 4: Deploy Frontend** (React)
+1. Click "Add Service" → "GitHub Repo"
+2. Configuration:
+   - **Root Directory**: `/`
+   - **Dockerfile Target**: `frontend`
+   - **Service Name**: `frontend`
+3. Environment Variables:
+   ```
+   REACT_APP_API_URL=http://backend:3000
+   PORT=3001
+   NODE_ENV=production
+   ```
+4. Deploy
 
 ## 🎯 Final Architecture
 
 ```
-Frontend (Vercel) → Backend (Render) → ML Service (Render) → MongoDB Atlas
+Frontend (Railway) → Backend (Railway) → ML Service (Railway) → MongoDB Atlas
 ```
+
+All services communicate on Railway's internal network with automatic service discovery.
+
+## 🔧 Railway Service Communication
+
+**Internal URLs (between services):**
+- `http://ml-service:5000` (from backend to ML service)
+- `http://backend:3000` (from frontend to backend)
+
+**Public URLs:**
+- Frontend: `https://<railway-project>-frontend.up.railway.app`
+- Backend: `https://<railway-project>-backend.up.railway.app`
+- ML Service: `https://<railway-project>-ml-service.up.railway.app`
 
 ## ✅ Post-Deployment Checklist
 
-- [ ] Frontend loads on Vercel
-- [ ] ML service responds to `/predict` on Render
-- [ ] Backend connects to ML service and MongoDB
-- [ ] Frontend can communicate with backend
+- [ ] All three services deployed on Railway
+- [ ] Frontend loads and displays correctly
+- [ ] ML service responds to `/health` endpoint
+- [ ] Backend connects to ML service via internal network
+- [ ] Frontend environment variable points to backend internal URL
 - [ ] User analysis works end-to-end
+- [ ] Monitor service logs in Railway dashboard
+- [ ] Verify MongoDB connection is working
+- [ ] Check all services are healthy
 
-## 🔧 Environment Variables Summary
+## 🔍 Monitoring & Logs
 
-**Frontend (Vercel):**
-```
-REACT_APP_API_URL=https://your-backend.onrender.com
-```
+Railway provides built-in monitoring:
+- Real-time logs for each service
+- CPU/Memory usage metrics
+- Deployment history
+- Auto-rollback on failure
 
-**Backend (Render):**
-```
-NODE_ENV=production
-ML_SERVICE_URL=https://your-ml-service.onrender.com
-MONGODB_URI=mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0
-```
-
-**ML Service (Render):**
-```
-FLASK_ENV=production
-```
+View logs: Click on service → "Logs" tab
 
 ## 🚀 Quick Deploy Order:
+
+1. ML Service (no dependencies)
+2. Backend (depends on ML Service)
+3. Frontend (depends on Backend)
+
+## ⚠️ Security Notes
+
+- **Never commit** `.env` files or credentials
+- **Never hardcode** MONGODB_URI
+- Use Railway's environment variable management
+- Keep secrets in a `.env` file locally (add to .gitignore)
+- For local development, copy secrets to `.env` from Railway dashboard
 1. **ML Service** (foundation)
 2. **Backend** (depends on ML)
 3. **Frontend** (depends on backend)
+
+## 📝 Notes for Railway
+
+- Railway automatically detects changes in your GitHub repo and redeploys
+- Private networking between services is automatic
+- Each service gets its own public URL
+- Environment variables are managed in Railway dashboard
+- Use `${{ services.SERVICE_NAME.public_url }}` for cross-service references

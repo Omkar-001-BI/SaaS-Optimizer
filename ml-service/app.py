@@ -2,6 +2,11 @@ from flask import Flask, request, jsonify
 import joblib
 import numpy as np
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -9,8 +14,13 @@ app = Flask(__name__)
 model_path = os.path.join(os.path.dirname(__file__), "saas_model.pkl")
 encoder_path = os.path.join(os.path.dirname(__file__), "label_encoder.pkl")
 
-model = joblib.load(model_path)
-le = joblib.load(encoder_path)
+try:
+    model = joblib.load(model_path)
+    le = joblib.load(encoder_path)
+    logger.info("Models loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load models: {e}")
+    raise
 
 @app.route("/predict", methods=["POST"])
 def predict():

@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+.next/
+out/
+
+# Development
+.env.local
+.env.development
+.env.test
+npm-debug.log
+yarn-error.log
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.coverage
+.pytest_cache/
+.jest_cache/
+
+# Documentation
+*.md
+RAILWAY_SETUP.md
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yml
+Dockerfile
+
+# Misc
+*.log
+temp/
+tmp/

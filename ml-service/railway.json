@@ -1,0 +1,27 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "dockerfile",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "target": "ml-service"
+    }
+  },
+  "deploy": {
+    "startCommand": "gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 60 app:app",
+    "numReplicas": 1,
+    "restartPolicyMaxRetries": 10,
+    "healthchecks": {
+      "liveness": {
+        "initialDelayMs": 10000,
+        "periodMs": 10000,
+        "path": "/health"
+      }
+    }
+  },
+  "variables": {
+    "FLASK_ENV": "production",
+    "PORT": "5000"
+  }
+}

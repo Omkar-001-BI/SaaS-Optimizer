@@ -6,37 +6,53 @@ services:
       context: .
       dockerfile: Dockerfile
       target: ml-service
+    container_name: ml-service
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-    volumes:
-      - ./saas_model.pkl:/app/saas_model.pkl
-      - ./label_encoder.pkl:/app/label_encoder.pkl
+      - PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: backend
+    container_name: backend
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - ML_SERVICE_URL=http://ml-service:5000
       - MONGODB_URI=${MONGODB_URI}
+      - PORT=3000
     depends_on:
-      - ml-service
+      ml-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
       target: frontend
+    container_name: frontend
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://localhost:3000
+      - REACT_APP_API_URL=http://backend:3000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy

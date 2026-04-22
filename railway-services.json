@@ -1,0 +1,81 @@
+{
+  "services": [
+    {
+      "name": "ml-service",
+      "directory": "ml-service",
+      "runtime": "Python 3.11",
+      "language": "Python",
+      "port": 5000,
+      "startCommand": "python app.py",
+      "buildCommand": "pip install -r requirements.txt",
+      "environmentVariables": {
+        "FLASK_ENV": "production",
+        "PORT": "5000"
+      },
+      "dependencies": [],
+      "endpoints": {
+        "internal": "http://ml-service:5000",
+        "public": "https://<domain>-ml-service-prod.up.railway.app"
+      },
+      "description": "Machine Learning prediction service (Flask)"
+    },
+    {
+      "name": "backend",
+      "directory": "backend",
+      "runtime": "Node.js 18",
+      "language": "JavaScript/Node.js",
+      "port": 3000,
+      "startCommand": "npm start",
+      "buildCommand": "npm install",
+      "environmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "3000",
+        "ML_SERVICE_URL": "http://ml-service:5000",
+        "MONGODB_URI": "mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0"
+      },
+      "dependencies": ["ml-service"],
+      "endpoints": {
+        "internal": "http://backend:3000",
+        "public": "https://<domain>-backend-prod.up.railway.app"
+      },
+      "description": "Express.js REST API backend"
+    },
+    {
+      "name": "frontend",
+      "directory": "frontend",
+      "runtime": "Node.js 18",
+      "language": "JavaScript/React",
+      "port": 3000,
+      "startCommand": "npm start",
+      "buildCommand": "npm run build",
+      "environmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "3000",
+        "REACT_APP_API_URL": "${{ services.backend.public_url }}"
+      },
+      "dependencies": ["backend"],
+      "endpoints": {
+        "internal": "http://frontend:3000",
+        "public": "https://<domain>-frontend-prod.up.railway.app"
+      },
+      "description": "React.js single-page application"
+    }
+  ],
+  "deploymentOrder": [
+    "ml-service (foundation)",
+    "backend (depends on ml-service)",
+    "frontend (depends on backend)"
+  ],
+  "architecture": {
+    "frontend": "Serves React app",
+    "backend": "Express API → connects to ML service & MongoDB",
+    "mlService": "Python Flask → ML predictions",
+    "database": "MongoDB Atlas (external)"
+  },
+  "communicationFlow": {
+    "userBrowser": "→ Frontend (public URL)",
+    "frontend": "→ Backend (public URL)",
+    "backend": "→ ML Service (internal URL: http://ml-service:5000)",
+    "backend": "→ MongoDB Atlas (external)"
+  }
+}

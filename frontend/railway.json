@@ -1,0 +1,26 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "dockerfile",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "target": "frontend"
+    }
+  },
+  "deploy": {
+    "startCommand": "serve -s build -l 3001",
+    "numReplicas": 1,
+    "restartPolicyMaxRetries": 10,
+    "healthchecks": {
+      "liveness": {
+        "initialDelayMs": 15000,
+        "periodMs": 10000
+      }
+    }
+  },
+  "variables": {
+    "NODE_ENV": "production",
+    "PORT": "3001"
+  }
+}
