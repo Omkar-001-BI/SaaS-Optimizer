@@ -27,9 +27,8 @@ FROM node:18-alpine as frontend-build
 
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/src ./src
-COPY frontend/public ./public
+RUN npm ci --omit=dev
+COPY frontend/ ./
 RUN npm run build
 
 # Stage 4: React Frontend Serve
