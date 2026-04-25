@@ -6,7 +6,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 // ✅ ENV VARIABLES
-const ML_API_URL = process.env.ML_API_URL || "http://127.0.0.1:5000";
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
 const PORT = process.env.PORT || 3000;
 
 const app = express();
@@ -55,7 +55,7 @@ app.post("/analyze", async (req, res) => {
   try {
     const userData = req.body;
 
-    const response = await axios.post(`${ML_API_URL}/predict`, userData);
+    const response = await axios.post(`${ML_SERVICE_URL}/predict`, userData);
 
     const result = {
       input: userData,
@@ -93,7 +93,7 @@ app.post("/analyze-batch", async (req, res) => {
     const results = [];
 
     for (const user of users) {
-      const response = await axios.post(`${ML_API_URL}/predict`, user);
+      const response = await axios.post(`${ML_SERVICE_URL}/predict`, user);
 
       const result = {
         input: user,
