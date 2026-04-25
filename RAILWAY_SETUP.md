@@ -58,7 +58,7 @@ Backend Environment Variables:
 NODE_ENV=production
 PORT=3000
 ML_SERVICE_URL=http://ml-service:5000
-MONGODB_URI=mongodb+srv://odhakne542_db_user:admin@cluster0.j8kynso.mongodb.net/?appName=Cluster0
+MONGODB_URI=your_mongodb_connection_string
 ```
 
 #### **Step 3: Deploy Frontend**

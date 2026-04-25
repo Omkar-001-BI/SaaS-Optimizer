@@ -2,14 +2,14 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "dockerfile",
-    "context": ".",
-    "dockerfile": "Dockerfile",
+    "context": "..",
+    "dockerfile": "../Dockerfile",
     "args": {
       "target": "frontend"
     }
   },
   "deploy": {
-    "startCommand": "serve -s build -l 3001",
+    "startCommand": "serve -s build -l $PORT",
     "numReplicas": 1,
     "restartPolicyMaxRetries": 10,
     "healthchecks": {

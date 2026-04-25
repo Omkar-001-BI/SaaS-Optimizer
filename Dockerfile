@@ -9,7 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ml-service/app.py ml-service/train_model.py ml-service/saas_model.pkl ml-service/label_encoder.pkl ./
 
 EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "60", "app:app"]
+# Bind to Railway's injected $PORT (default to 5000 locally)
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 60 app:app"]
 
 # Stage 2: Node.js Backend
 FROM node:18-alpine as backend
@@ -27,7 +28,8 @@ FROM node:18-alpine as frontend-build
 
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci --omit=dev
+# Install full deps for CRA build (some tooling can be in dev deps)
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
@@ -39,4 +41,5 @@ RUN npm install -g serve
 COPY --from=frontend-build /app/build ./build
 
 EXPOSE 3001
-CMD ["serve", "-s", "build", "-l", "3001"]
+# Railway injects $PORT at runtime; serve must bind to it.
+CMD ["sh", "-c", "serve -s build -l ${PORT:-3001}"]
