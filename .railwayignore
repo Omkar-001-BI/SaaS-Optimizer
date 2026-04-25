@@ -42,7 +42,7 @@ RAILWAY_SETUP.md
 
 # Docker
 docker-compose.yml
-Dockerfile
+# (keep Dockerfile included for builds)
 
 # Misc
 *.log

@@ -28,8 +28,8 @@ FROM node:18-alpine as frontend-build
 
 WORKDIR /app
 COPY frontend/package*.json ./
-# Install full deps for CRA build (some tooling can be in dev deps)
-RUN npm ci
+# Use npm install (ci can fail if lockfile differs across npm versions)
+RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
