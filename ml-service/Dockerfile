@@ -5,7 +5,9 @@ WORKDIR /app
 COPY ml-service/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ml-service/app.py ml-service/train_model.py ml-service/saas_model.pkl ml-service/label_encoder.pkl ./
+COPY ml-service/app.py ml-service/train_model.py ./
+# Generate model artifacts inside the image so they match installed numpy/sklearn versions
+RUN python train_model.py
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 5000
