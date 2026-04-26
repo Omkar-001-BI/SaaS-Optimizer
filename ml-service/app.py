@@ -58,6 +58,15 @@ def predict():
         "estimated_savings": savings
     })
 
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({
+        "service": "ml-service",
+        "status": "running",
+        "health_endpoint": "/health",
+        "predict_endpoint": "/predict"
+    })
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "healthy", "service": "ml-service"})

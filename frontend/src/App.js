@@ -25,6 +25,7 @@ function App() {
   const [topWaste, setTopWaste] = useState([]);
   const [toolData, setToolData] = useState([]);
   const [alerts, setAlerts] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetchAnalytics();
@@ -32,6 +33,7 @@ function App() {
 
   const fetchAnalytics = async () => {
     try {
+      setErrorMessage("");
       const summaryRes = await axios.get(`${API_URL}/analytics/summary`);
       const categoryRes = await axios.get(`${API_URL}/analytics/categories`);
       const recommendationRes = await axios.get(`${API_URL}/analytics/recommendations`);
@@ -48,7 +50,9 @@ function App() {
       setRecent(recentRes.data.data || []);
       setTopWaste(topWasteRes.data.data || []);
     } catch (error) {
-      console.error("Error fetching analytics:", error.message);
+      const backendMessage = error.response?.data?.message;
+      setErrorMessage(backendMessage || "Unable to fetch analytics data.");
+      console.error("Error fetching analytics:", backendMessage || error.message);
     }
   };
 
@@ -57,6 +61,20 @@ function App() {
   return (
     <div className="container">
       <h1>SaaS Cost Optimization Dashboard</h1>
+      {errorMessage && (
+        <div
+          style={{
+            backgroundColor: "#fff5e6",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            border: "1px solid #f0b35b",
+            color: "#8a5a00"
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
 
       {alerts.inactiveUsers > 0 && (
         <div
@@ -88,41 +106,49 @@ function App() {
       <div className="charts">
         <div className="chart-box">
           <h2>Usage Category Breakdown</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={categories}
-                dataKey="count"
-                nameKey="_id"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                label
-              >
-                {categories.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={pieColors[index % pieColors.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {categories.length === 0 ? (
+            <p>No category data available yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categories}
+                  dataKey="count"
+                  nameKey="_id"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label
+                >
+                  {categories.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={pieColors[index % pieColors.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="chart-box">
           <h2>Recommendation Breakdown</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={recommendations}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="_id" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" />
-            </BarChart>
-          </ResponsiveContainer>
+          {recommendations.length === 0 ? (
+            <p>No recommendation data available yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={recommendations}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="_id" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

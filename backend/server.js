@@ -6,19 +6,48 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 // ✅ ENV VARIABLES
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:5000";
+const isProduction = process.env.NODE_ENV === "production";
+const ML_SERVICE_URL = process.env.ML_API_URL || process.env.ML_SERVICE_URL || (isProduction ? "" : "http://127.0.0.1:5000");
 const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ MongoDB connection (no hardcoded secrets)
-const mongoUri = process.env.MONGODB_URI;
-mongoose.connect(mongoUri)
-  .then(() => console.log("MongoDB Atlas Connected"))
-  .catch((err) => console.error("MongoDB Connection Error:", err));
+// MongoDB connection with explicit diagnostics for cloud deploys.
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is missing. Database features will be unavailable.");
+} else {
+  mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000
+  })
+    .then(() => console.log("MongoDB Atlas Connected"))
+    .catch((err) => console.error("MongoDB Connection Error:", err.message));
+}
+
+function isDbConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+function ensureDbConnection(res) {
+  if (isDbConnected()) return true;
+
+  return res.status(503).json({
+    success: false,
+    message: "Database not connected. Verify MONGODB_URI and MongoDB Atlas network access."
+  });
+}
+
+function ensureMlConfig(res) {
+  if (ML_SERVICE_URL) return true;
+
+  return res.status(503).json({
+    success: false,
+    message: "ML service URL is not configured. Set ML_API_URL (or ML_SERVICE_URL) in backend environment variables."
+  });
+}
 
 // Schema
 const userAnalysisSchema = new mongoose.Schema({
@@ -45,14 +74,40 @@ const userAnalysisSchema = new mongoose.Schema({
 
 const UserAnalysis = mongoose.model("UserAnalysis", userAnalysisSchema);
 
-// Health check
+// Basic liveness check
 app.get("/", (req, res) => {
   res.send("Node Backend Running");
+});
+
+// Readiness check for backend dependencies
+app.get("/health", async (req, res) => {
+  const dbConnected = isDbConnected();
+  let mlConnected = false;
+
+  if (ML_SERVICE_URL) {
+    try {
+      const mlHealth = await axios.get(`${ML_SERVICE_URL}/health`, { timeout: 3000 });
+      mlConnected = mlHealth.status >= 200 && mlHealth.status < 300;
+    } catch (error) {
+      mlConnected = false;
+    }
+  }
+
+  const healthy = dbConnected && mlConnected;
+  return res.status(healthy ? 200 : 503).json({
+    success: healthy,
+    service: "backend",
+    dbConnected,
+    mlConnected
+  });
 });
 
 // Single analysis
 app.post("/analyze", async (req, res) => {
   try {
+    if (!ensureMlConfig(res)) return;
+
+    const dbReady = isDbConnected();
     const userData = req.body;
 
     const response = await axios.post(`${ML_SERVICE_URL}/predict`, userData);
@@ -62,10 +117,14 @@ app.post("/analyze", async (req, res) => {
       output: response.data
     };
 
-    await UserAnalysis.create(result);
+    if (dbReady) {
+      await UserAnalysis.create(result);
+    }
 
     res.json({
       success: true,
+      persisted: dbReady,
+      message: dbReady ? "Analysis saved successfully" : "Analysis completed but database is not connected",
       data: result
     });
   } catch (error) {
@@ -81,6 +140,9 @@ app.post("/analyze", async (req, res) => {
 // Batch analysis
 app.post("/analyze-batch", async (req, res) => {
   try {
+    if (!ensureMlConfig(res)) return;
+    if (!ensureDbConnection(res)) return;
+
     const users = req.body.users;
 
     if (!Array.isArray(users)) {
@@ -122,6 +184,8 @@ app.post("/analyze-batch", async (req, res) => {
 // Analytics APIs
 app.get("/analytics/summary", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const totalAnalyses = await UserAnalysis.countDocuments();
 
     const savingsResult = await UserAnalysis.aggregate([
@@ -151,6 +215,8 @@ app.get("/analytics/summary", async (req, res) => {
 
 app.get("/analytics/categories", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const categoryStats = await UserAnalysis.aggregate([
       {
         $group: {
@@ -175,6 +241,8 @@ app.get("/analytics/categories", async (req, res) => {
 
 app.get("/analytics/recommendations", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const recommendationStats = await UserAnalysis.aggregate([
       {
         $group: {
@@ -199,6 +267,8 @@ app.get("/analytics/recommendations", async (req, res) => {
 
 app.get("/analytics/recent", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const recentData = await UserAnalysis.find()
       .sort({ createdAt: -1 })
       .limit(10);
@@ -218,6 +288,8 @@ app.get("/analytics/recent", async (req, res) => {
 
 app.get("/analytics/top-waste", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const topWaste = await UserAnalysis.find({
       "output.estimated_savings": { $gt: 0 }
     })
@@ -239,6 +311,8 @@ app.get("/analytics/top-waste", async (req, res) => {
 
 app.get("/analytics/tool-wise", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const data = await UserAnalysis.aggregate([
       {
         $group: {
@@ -267,6 +341,8 @@ app.get("/analytics/tool-wise", async (req, res) => {
 
 app.get("/analytics/alerts", async (req, res) => {
   try {
+    if (!ensureDbConnection(res)) return;
+
     const inactiveUsers = await UserAnalysis.countDocuments({
       "output.usage_category": "Inactive"
     });
