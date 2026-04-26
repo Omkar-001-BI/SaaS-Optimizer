@@ -49,6 +49,43 @@ function ensureMlConfig(res) {
   });
 }
 
+// In-memory fallback so app remains usable when MongoDB is temporarily unavailable.
+const inMemoryAnalyses = [];
+
+function buildSummaryFromAnalyses(analyses) {
+  const totalAnalyses = analyses.length;
+  const totalSavings = analyses.reduce((sum, item) => sum + (item.output?.estimated_savings || 0), 0);
+  return { totalAnalyses, totalSavings };
+}
+
+function countByKey(analyses, keySelector) {
+  const counts = new Map();
+  for (const item of analyses) {
+    const key = keySelector(item) || "Unknown";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([key, count]) => ({ _id: key, count }));
+}
+
+function buildToolWise(analyses) {
+  const grouped = new Map();
+  for (const item of analyses) {
+    const tool = item.input?.tool_name || "Unknown";
+    const current = grouped.get(tool) || { _id: tool, totalSavings: 0, users: 0 };
+    current.totalSavings += item.output?.estimated_savings || 0;
+    current.users += 1;
+    grouped.set(tool, current);
+  }
+  return Array.from(grouped.values()).sort((a, b) => b.totalSavings - a.totalSavings);
+}
+
+function buildAlerts(analyses) {
+  const inactive = analyses.filter((item) => item.output?.usage_category === "Inactive");
+  const inactiveUsers = inactive.length;
+  const totalLoss = inactive.reduce((sum, item) => sum + (item.output?.estimated_savings || 0), 0);
+  return { inactiveUsers, totalLoss };
+}
+
 // Schema
 const userAnalysisSchema = new mongoose.Schema({
   input: {
@@ -114,11 +151,14 @@ app.post("/analyze", async (req, res) => {
 
     const result = {
       input: userData,
-      output: response.data
+      output: response.data,
+      createdAt: new Date()
     };
 
     if (dbReady) {
       await UserAnalysis.create(result);
+    } else {
+      inMemoryAnalyses.push(result);
     }
 
     res.json({
@@ -141,7 +181,6 @@ app.post("/analyze", async (req, res) => {
 app.post("/analyze-batch", async (req, res) => {
   try {
     if (!ensureMlConfig(res)) return;
-    if (!ensureDbConnection(res)) return;
 
     const users = req.body.users;
 
@@ -153,21 +192,28 @@ app.post("/analyze-batch", async (req, res) => {
     }
 
     const results = [];
+    const dbReady = isDbConnected();
 
     for (const user of users) {
       const response = await axios.post(`${ML_SERVICE_URL}/predict`, user);
 
       const result = {
         input: user,
-        output: response.data
+        output: response.data,
+        createdAt: new Date()
       };
 
-      await UserAnalysis.create(result);
+      if (dbReady) {
+        await UserAnalysis.create(result);
+      } else {
+        inMemoryAnalyses.push(result);
+      }
       results.push(result);
     }
 
     res.json({
       success: true,
+      persisted: dbReady,
       total_users: results.length,
       results: results
     });
@@ -184,7 +230,14 @@ app.post("/analyze-batch", async (req, res) => {
 // Analytics APIs
 app.get("/analytics/summary", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      const summary = buildSummaryFromAnalyses(inMemoryAnalyses);
+      return res.json({
+        success: true,
+        source: "memory",
+        ...summary
+      });
+    }
 
     const totalAnalyses = await UserAnalysis.countDocuments();
 
@@ -215,7 +268,13 @@ app.get("/analytics/summary", async (req, res) => {
 
 app.get("/analytics/categories", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      return res.json({
+        success: true,
+        source: "memory",
+        data: countByKey(inMemoryAnalyses, (item) => item.output?.usage_category)
+      });
+    }
 
     const categoryStats = await UserAnalysis.aggregate([
       {
@@ -241,7 +300,13 @@ app.get("/analytics/categories", async (req, res) => {
 
 app.get("/analytics/recommendations", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      return res.json({
+        success: true,
+        source: "memory",
+        data: countByKey(inMemoryAnalyses, (item) => item.output?.recommendation)
+      });
+    }
 
     const recommendationStats = await UserAnalysis.aggregate([
       {
@@ -267,7 +332,14 @@ app.get("/analytics/recommendations", async (req, res) => {
 
 app.get("/analytics/recent", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      const recentData = [...inMemoryAnalyses].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
+      return res.json({
+        success: true,
+        source: "memory",
+        data: recentData
+      });
+    }
 
     const recentData = await UserAnalysis.find()
       .sort({ createdAt: -1 })
@@ -288,7 +360,17 @@ app.get("/analytics/recent", async (req, res) => {
 
 app.get("/analytics/top-waste", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      const topWaste = inMemoryAnalyses
+        .filter((item) => (item.output?.estimated_savings || 0) > 0)
+        .sort((a, b) => (b.output?.estimated_savings || 0) - (a.output?.estimated_savings || 0))
+        .slice(0, 5);
+      return res.json({
+        success: true,
+        source: "memory",
+        data: topWaste
+      });
+    }
 
     const topWaste = await UserAnalysis.find({
       "output.estimated_savings": { $gt: 0 }
@@ -311,7 +393,13 @@ app.get("/analytics/top-waste", async (req, res) => {
 
 app.get("/analytics/tool-wise", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      return res.json({
+        success: true,
+        source: "memory",
+        data: buildToolWise(inMemoryAnalyses)
+      });
+    }
 
     const data = await UserAnalysis.aggregate([
       {
@@ -341,7 +429,14 @@ app.get("/analytics/tool-wise", async (req, res) => {
 
 app.get("/analytics/alerts", async (req, res) => {
   try {
-    if (!ensureDbConnection(res)) return;
+    if (!isDbConnected()) {
+      const alertData = buildAlerts(inMemoryAnalyses);
+      return res.json({
+        success: true,
+        source: "memory",
+        ...alertData
+      });
+    }
 
     const inactiveUsers = await UserAnalysis.countDocuments({
       "output.usage_category": "Inactive"
